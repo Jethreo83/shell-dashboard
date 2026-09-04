@@ -25,10 +25,12 @@ async function activeStaffRow(staffTable: string, googleEmail: string): Promise<
     );
     return rows[0] ?? null;
   } catch (err: any) {
-    // Table may not exist yet (Elektrica today — ADR-001 Open Question
-    // 2). Treat as "no entitlement," not a hard failure — the launcher
-    // should still work for VLS/Collision while Elektrica's table is
-    // pending. Any other DB error still surfaces normally via query().
+    // Defense-in-depth, not the expected path anymore: as of
+    // 2026-09-05 all three businesses' staff_user tables exist
+    // (elektrica.staff_user just landed — hermes, 2026-09-05). Kept so
+    // a business whose table gets dropped/renamed mid-migration still
+    // degrades to "no entitlement" instead of a hard 500 for
+    // everyone. Any other DB error still surfaces normally via query().
     if (err?.code === '42P01' /* undefined_table */) {
       return null;
     }

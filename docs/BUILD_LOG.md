@@ -144,3 +144,39 @@ Not done yet / explicitly still open:
 - Dashboard deploy URLs in `Launcher.tsx`'s `DASHBOARD_URLS` map are
   all `undefined` — correct today since none of VLS/Elektrica/Collision
   has a live frontend yet either.
+
+## 2026-09-05 — Elektrica's staff_user table landed
+
+hermes reported `elektrica.staff_user` now exists (built and verified
+live by the elektrica-dashboard bot): `person_id` FK, role enum
+(`owner`/`staff`, explicitly placeholder — not yet Jed-confirmed),
+`google_email`, `active` flag, `provisioned_by_staff_user_id`. Same
+shape as `vls.staff_user`/`collision.staff_user`, so the existing
+role-gating mechanism generalizes without code changes — confirmed
+this directly: `entitlements.ts` never branches on a specific role
+string, only checks whether an active row exists at all, and
+`Launcher.tsx` renders `role` as opaque display text
+(`Role: {d.role}`), never switches on its value. Both already satisfy
+hermes's instruction not to build anything that treats "owner" vs
+"staff" as meaningfully different yet.
+
+Changes made:
+- `api/src/businesses.ts`: updated comments to reflect the table now
+  existing; `staffTable: 'elektrica.staff_user'` entry unchanged
+  (it was already correct, just commented as not-yet-existing
+  before). Domain is still `null` — table existing and domain being
+  confirmed are two separate gates (Open Question 3 is still open;
+  Elektrica's door still won't render in the launcher until hermes
+  relays a real domain, correctly).
+- `api/src/entitlements.ts`: re-labeled the `undefined_table`
+  fallback as defense-in-depth rather than the expected path, since
+  as of today all three staff_user tables exist.
+- `npx tsc -p . --noEmit` → clean after the edit.
+
+No logic changes were needed — this generalized for free, which is
+the whole point of building the mechanism against "does an active row
+exist in this business's own staff table" rather than anything
+business-specific. Still blocked on the same two things as before:
+the scoped Neon connection string (requested, not yet received) and
+Collision's/Elektrica's confirmed Google Workspace domains.
+

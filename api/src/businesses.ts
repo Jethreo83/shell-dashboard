@@ -12,12 +12,21 @@
 // 004 explicitly declined to make. DO NOT fill these in from
 // assumption — wait for hermes to relay the confirmed strings.
 //
-// Elektrica also has no staff_user table yet in elektrica-dashboard
-// (ADR-001 Open Question 2) — its entry below is present so the shape
-// is ready, but querying it will simply find no active row for anyone
-// until that table exists. The launcher will correctly show no
-// Elektrica door in the meantime, which is the intended behavior, not
-// a bug to work around.
+// Elektrica's staff_user table now exists (hermes, 2026-09-05:
+// "elektrica.staff_user now exists — just built, verified live.
+// Schema: person_id FK, role enum (currently owner/staff placeholder
+// — not yet Jed-confirmed), google_email, active flag,
+// provisioned_by_staff_user_id. Same shape as vls.staff_user /
+// collision.staff_user"). This mechanism already generalizes to it
+// without changes — entitlements.ts only ever checks "does an active
+// row exist," never a specific role value, so the placeholder
+// owner/staff role names are safe to pass through as-is (see
+// entitlements.ts Grant.role — just a string, never branched on).
+// Elektrica's domain is still `null` below though (Open Question 3,
+// still unconfirmed) — confirmedBusinesses() will keep hiding its
+// door from the launcher until hermes relays a real domain, which is
+// still correct: table existing and domain being confirmed are two
+// separate gates.
 
 export type BusinessKey = 'vls' | 'collision' | 'elektrica';
 
@@ -47,7 +56,7 @@ export const BUSINESSES: BusinessConfig[] = [
   {
     business: 'elektrica',
     domain: null, // TBD — awaiting confirmed domain from hermes/Jed.
-    staffTable: 'elektrica.staff_user', // does not exist yet; see module comment above.
+    staffTable: 'elektrica.staff_user', // exists now (hermes, 2026-09-05); domain still unconfirmed, see module comment above.
     label: 'Elektrica Dashboard',
   },
 ];
