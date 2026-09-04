@@ -359,3 +359,38 @@ renders whatever `/me` returns generically per business, so no UI
 code needed touching for Elektrica's door to start appearing once a
 real active Elektrica staff member logs in.
 
+## 2026-09-05 — clean, fully-verified state; holding for dashboard deploy URLs
+
+hermes confirmed: none of VLS/Elektrica/Collision are deployed
+anywhere public yet — all three still run locally via dev server.
+Nothing real exists yet to wire into `web/src/Launcher.tsx`'s
+`DASHBOARD_URLS` map. Holding there; hermes will relay the moment
+any dashboard has a real URL — not chasing this further until then.
+
+Current state, for anyone picking this up later:
+- Login (Google OAuth, domain-restricted) + entitlement lookup +
+  fail-closed DB re-check: built, and verified end-to-end against
+  live staging data (real active/inactive staff rows, not just an
+  empty table or fake env vars).
+- All three businesses (VLS, Collision, Elektrica) wired identically
+  — confirmed domains, confirmed role-gating mechanism, no
+  special-casing left anywhere in the code.
+- `platform.person`/`person_id` linkage gap: known, documented,
+  confirmed NOT to affect the shell (entitlement is keyed on
+  `google_email`), and now has an owner (domain bots, per Jed's
+  decision) — no shell action needed when it lands.
+- Nothing deployed anywhere externally. `api/.env` and `web/.env`
+  exist locally with real staging credentials, gitignored, never
+  committed (checked repeatedly via `git check-ignore`/`git status`
+  throughout this build).
+- Open ADR-001 items, current status: Question 1 (JWT/session trust
+  model) resolved — one shared-secret JWT. Question 2 (Elektrica
+  table) resolved — table exists, wired. Question 3 (domains)
+  resolved — all three confirmed. Question 4 (routing-level
+  enforcement) resolved as a design decision, but not yet
+  exercisable in practice — depends on a dashboard backend actually
+  implementing `docs/JWT_CONTRACT.md` section 4, which can't happen
+  until a dashboard has a backend at all. Question 5 (no
+  blocklist/8h TTL) resolved and implemented. Question 6 (connection
+  string) resolved — received, wired, verified live.
+

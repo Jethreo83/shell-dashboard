@@ -31,8 +31,10 @@ builds against.
 
 ## Status
 
-ADR-001 (architecture) reviewed and approved by hermes/Jed. Skeleton
-built, and login + entitlement + fail-closed re-check verified
-end-to-end against live staging (real staff rows, real
-active/inactive states) — see `docs/BUILD_LOG.md`. Not deployed
-anywhere externally.
+ADR-001 (architecture) reviewed and approved by hermes/Jed. Login +
+entitlement + fail-closed re-check verified end-to-end against live
+staging (real staff rows, real active/inactive states, all three
+confirmed domains wired in). All 6 ADR open questions resolved. No
+dashboard is deployed anywhere yet, so nothing to link the launcher
+to — holding until hermes relays a real dashboard URL. Nothing
+outstanding on the shell's own side.

@@ -228,9 +228,28 @@ inherits a shell that was designed with the constraint in mind.
    is entangled with Question 1's answer and with each dashboard's own
    eventual deploy topology (same origin vs. separate subdomains).
 
+   UPDATE 2026-09-04: RESOLVED — hermes: "Real routing-level
+   enforcement, not UI-only." Implemented on the shell's side as
+   `docs/JWT_CONTRACT.md` section 4: each dashboard backend must
+   independently verify the SSO JWT and re-check its own grant
+   against its own `staff_user` table per request — the shell's
+   `Launcher.tsx` door is UI convenience, never the enforcement
+   itself. This part of the contract cannot be fully exercised until
+   a dashboard backend actually implements it (none has a backend
+   yet — see Open Question below, still genuinely open in practice
+   even though the design decision is made).
+
 5. **Logout-everywhere semantics** — if the shell is the SSO, does
    logging out of the shell invalidate dashboard-level sessions too?
    Depends on Question 1.
+
+   UPDATE 2026-09-04: RESOLVED — hermes: no blocklist for now; keep
+   the shell's JWT TTL short (8h, matching VLS's existing
+   `SESSION_TTL_SECONDS`) and accept "logout = client discards
+   token, but a stolen/copied token stays valid until expiry" as the
+   same tradeoff VLS already lives with. Revisit only if/when
+   financials needs a harder guarantee — not now. Implemented as-is
+   in `api/src/auth.ts`/`docs/JWT_CONTRACT.md` section 2.
 
 6. **Scoped Neon connection string** — once this ADR is approved, I'll
    need a connection string for a role (e.g. `shell_app`, name open to
