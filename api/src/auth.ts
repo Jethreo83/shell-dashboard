@@ -118,11 +118,18 @@ export async function handleGoogleLogin(req: Request, res: Response) {
     // rows: no platform.person row was ever created for VLS staff
     // (only for clients). Resolving this from the DB today would find
     // nothing to resolve to for any real staff member, so it would be
-    // guessing, not implementing. Stays null until the domain bots
-    // decide whether staff provisioning should also create a
-    // platform.person row (convention #1) — that decision is
-    // explicitly not shell's to make. See docs/BUILD_LOG.md
-    // 2026-09-05 entry.
+    // guessing, not implementing. The resolving mechanism now exists —
+    // platform.match_or_create_person (vls-dashboard migration 008,
+    // called through platform_identity_service) — but that's staff
+    // PROVISIONING calling it, not shell reading it; shell has no
+    // write/EXECUTE grant on platform.* beyond its own SELECT-only
+    // scope (verified directly, see docs/BUILD_LOG.md), and correctly
+    // doesn't call this function itself. Stays null until whichever
+    // domain bot builds staff provisioning actually calls
+    // match_or_create_person for existing staff rows — no shell code
+    // change needed when that happens, since person_id here is never
+    // used for anything (entitlement lookup is keyed on google_email
+    // throughout, see entitlements.ts).
     person_id: null,
     google_email: email,
     grants,

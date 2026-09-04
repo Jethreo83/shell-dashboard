@@ -394,3 +394,46 @@ Current state, for anyone picking this up later:
   blocklist/8h TTL) resolved and implemented. Question 6 (connection
   string) resolved — received, wired, verified live.
 
+## 2026-09-05 — platform.match_or_create_person shared primitive landed
+
+hermes built `platform.match_or_create_person` (vls-dashboard
+migration 008, tag `vls-migration-008-person-match`), called through
+`platform_identity_service` — the shared primitive that resolves the
+`platform.person`-for-staff backlog item flagged earlier, and the
+correct mechanism for any future party provisioning (staff, client,
+customer, renter) per convention #1. Matches phone/email first, then
+name+DOB; exact match attaches; close match queues for human
+confirm-or-split; NULL DOB never counts as a match; no match creates
+new. Verified all 4 branches live by hermes.
+
+This is a provisioning-side primitive, not an entitlement-lookup
+primitive — confirmed directly (not assumed) that it changes nothing
+on the shell's side:
+- `shell_app` has no write grant anywhere in `platform.*` — reran the
+  same write-attempt check as before: `INSERT INTO platform.person`
+  still denied with `permission denied for table person`.
+- `shell_app` has no `EXECUTE` grant on `match_or_create_person`
+  either — the function doesn't even exist on the staging branch
+  `shell_app` connects to yet (`42883 function ... does not exist`),
+  which is correct: shell isn't the caller of this function, staff
+  provisioning is, and that work hasn't run against this staging
+  branch yet.
+- `vls.staff_user.person_id` is still NULL for all 5 staff rows on
+  staging right now (`count(*)=5, count(person_id)=0`) — expected,
+  since nothing has called the new function against these rows yet.
+- Updated the `person_id: null` comment in `api/src/auth.ts` to name
+  the actual resolving mechanism instead of the earlier, vaguer "the
+  domain bots will decide" framing, and updated
+  `docs/ADR-001-shell-architecture.md` Open Question 6 with the same.
+  No logic change — `person_id` stays `null` and unused in the
+  shell's session/JWT either way, since `entitlements.ts`/`auth.ts`
+  key everything on `google_email`. Re-confirmed via `tsc -p .
+  --noEmit` clean after the comment edit; no functional change to
+  verify beyond that.
+
+Correctly not calling `match_or_create_person` from shell code — it's
+staff/party provisioning's job, and shell has no write path to
+`platform.*` at all by design (ADR-001 Decision 2). Noting this here
+mainly so a future session doesn't mistake "the primitive exists now"
+for "the shell should start calling it" — it shouldn't, and doesn't.
+

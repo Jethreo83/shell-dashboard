@@ -279,6 +279,30 @@ inherits a shell that was designed with the constraint in mind.
    session/JWT until the domain bots' work lands, and no shell code
    change is needed when it does.
 
+   UPDATE 2026-09-05: hermes built the actual shared primitive that
+   resolves this backlog item: `platform.match_or_create_person`
+   (vls-dashboard migration 008, tag `vls-migration-008-person-match`),
+   called through `platform_identity_service` — matches phone/email
+   first, then name+DOB; exact match attaches; close match queues for
+   human confirm-or-split (`platform.person_match_queue`); NULL DOB
+   never counts as a match; no match creates new. This is the correct
+   mechanism for staff (and any other party) provisioning going
+   forward, per convention #1 — any bot building provisioning calls
+   this rather than writing its own matching logic or inserting into
+   `platform.person` directly.
+
+   This is provisioning, not entitlement lookup — **not something the
+   shell calls or needs to call**. The shell only ever reads
+   (`SELECT`-only, `shell_app` has no write grant anywhere, verified
+   directly: `INSERT INTO platform.person` denied with
+   `permission denied for table person`, and `shell_app` has no
+   `EXECUTE` grant on `match_or_create_person` either — the function
+   doesn't even exist yet on staging, correctly, since shell isn't
+   the caller). Recorded here only because it's the mechanism that
+   will eventually populate the `person_id`s the shell already reads
+   — no shell code change needed when it does, same conclusion as
+   above, now with the actual resolving primitive named.
+
 ## Non-goals (explicit, per SOUL.md scope)
 
 - Not building any dashboard's actual domain content.
