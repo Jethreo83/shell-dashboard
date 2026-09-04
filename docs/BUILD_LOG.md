@@ -229,3 +229,80 @@ zero visible `platform.person` rows for VLS staff specifically —
 consistent with, not a new instance of, the same gap. No shell-side
 action needed; same wait-for-domain-bots-decision applies.
 
+## 2026-09-05 — SHELL_DB_URL received; wired in and verified end-to-end against live staging
+
+hermes sent staging + production `SHELL_DB_URL` connection strings.
+Wrote `api/.env` (gitignored — confirmed via `git check-ignore -v`
+and `git status --short` before AND after, never staged) pointing
+`DATABASE_URL` at **staging**, per hermes's instruction to use
+staging for dev/testing.
+
+Before trusting anything, ran a direct DB smoke test — and caught a
+methodology bug in my own first attempt: a stale `DATABASE_URL`
+(pointing at `neondb_owner`/production, left over from an earlier
+`terminal` call in this session) was already exported in the shell
+environment, and `dotenv` does not override existing env vars. That
+first run appeared to show `SELECT` on `vls.case` succeeding —
+which would have been a real security incident if true. Diagnosed it
+properly instead of either panicking or dismissing it: checked
+`current_user`/`session_user` (came back `neondb_owner`, not
+`shell_app` — the tell), ran `has_table_privilege`, and inspected
+`information_schema.role_table_grants` directly. Confirmed the cause
+was the leftover env var overriding the intended staging/`shell_app`
+connection, not a flaw in the migration. `unset DATABASE_URL
+DATABASE_URL_UNPOOLED` and re-ran: `current_user` correctly came back
+`shell_app`, and `SELECT ... FROM vls.case` correctly failed with
+`permission denied for table case` — matching exactly what hermes
+reported. Recording this because it's the kind of near-miss worth
+being explicit about: the fix was verifying the actual session
+identity before either confirming or denying a security claim, not
+trusting the first result.
+
+With a clean environment, built (`tsc -p .`) and booted the real API
+server (`node dist/server.js`) against live staging, then ran the
+full fail-closed exercise hermes asked for — against the real server
+and real DB this time, not fake env vars:
+
+- `GET /health` → 200, server up.
+- `POST /auth/google` with no body → 400 `missing_id_token`.
+- `POST /auth/google` with a garbage (non-JWT) `id_token` → 401
+  `invalid_google_token` (Google verification itself rejects it, not
+  just a shape check).
+- `GET /me` with no auth header → 401 `missing_token`.
+- `GET /me` with a malformed token → 401 `invalid_or_expired_token`.
+- `GET /me` with a validly-signed token whose `iss` is not
+  `shell-dashboard` → 401 `invalid_issuer` (issuer check exercised
+  against the live server, not just the earlier fake-env-var test).
+
+Then the test that actually matters most — proving the fail-closed
+DB re-check (ADR-001 Decision 1) works against real staff rows, not
+just an empty table:
+- Looked up (masked, not printed raw) a real **active** VLS staff
+  row on staging, signed a JWT for that email with **empty/stale**
+  `grants` in the token payload, and hit `/me` — got back
+  `grants: [{business: "vls", role: "admin"}]`, `doors` populated.
+  Confirms `/me` derives grants fresh from the DB and does NOT trust
+  whatever the JWT claims.
+- Looked up a real **inactive** (`active = false`) VLS staff row,
+  signed a JWT for that email with `grants` **claiming** an active
+  `vls` grant, and hit `/me` — got back `grants: []`, `doors: []`.
+  This is the property the whole design exists for: a deactivated
+  staff member's stale/copied token cannot get a door rendered, even
+  if the token itself claims otherwise, because `/me` re-derives from
+  `active = true` in the DB every call.
+- An email with no staff row anywhere → `grants: []`, `doors: []`,
+  no error, as expected.
+
+All of the above ran against staging, with real data (masked in
+terminal output, never printed raw), then all scratch test scripts
+were deleted (nothing left in the repo). Production connection string
+received but intentionally not used for any test — staging only, per
+hermes's instruction.
+
+Still outstanding: Collision's/Elektrica's confirmed Google Workspace
+domains (Open Question 3), and the platform.person/staff linkage gap
+(separate, tracked with the domain bots). Otherwise the shell's
+login + entitlement + fail-closed re-check is now verified working
+end-to-end against real, live data — not just unit-level or
+fake-env-var testing.
+

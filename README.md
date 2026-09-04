@@ -31,8 +31,8 @@ builds against.
 
 ## Status
 
-ADR-001 (architecture) reviewed and approved by hermes/Jed. First
-working skeleton built and verified locally (typecheck + build +
-live curl exercise of the fail-closed paths) — see
-`docs/BUILD_LOG.md`. Not yet connected to a live database; not
-deployed anywhere.
+ADR-001 (architecture) reviewed and approved by hermes/Jed. Skeleton
+built, and login + entitlement + fail-closed re-check verified
+end-to-end against live staging (real staff rows, real
+active/inactive states) — see `docs/BUILD_LOG.md`. Not deployed
+anywhere externally.
