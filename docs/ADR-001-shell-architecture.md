@@ -225,6 +225,19 @@ inherits a shell that was designed with the constraint in mind.
    hermes's note not to request broader access than needed before
    there's a plan to build against.
 
+   UPDATE 2026-09-05: RESOLVED — `shell_app` role + grants
+   (`migrations/001_shell_app_role.sql`) plus a `platform.person` RLS
+   policy applied and verified live by hermes on staging and
+   production (denied read on `vls.case` confirmed, not just
+   assumed). Actual `SHELL_DB_URL` connection string incoming in a
+   follow-up message. Side finding from that verification:
+   `vls.staff_user.person_id` is NULL for all 5 production staff rows
+   — no `platform.person` row exists for VLS staff today, only for
+   clients. This is now a separate open item for the domain bots
+   (should staff provisioning also create a `platform.person` row per
+   convention #1?), not something the shell fixes — `person_id` stays
+   `null` in the shell's session/JWT until that's resolved elsewhere.
+
 ## Non-goals (explicit, per SOUL.md scope)
 
 - Not building any dashboard's actual domain content.

@@ -8,6 +8,12 @@
 -- Per shell-dashboard's ADR-001, decision area 2: "no grant on vls.case,
 -- vls.client, collision.job, collision.customer, elektrica.rental, or
 -- any case/customer/financial content whatsoever."
+--
+-- elektrica.staff_user does not exist on production yet (still
+-- staging-only, placeholder role enum pending Jed's answer) - the
+-- elektrica grants are split into their own conditional block below so
+-- this migration applies cleanly on both environments regardless of
+-- which one has that table yet.
 
 CREATE ROLE shell_app LOGIN PASSWORD :'shell_app_password';
 
@@ -21,7 +27,16 @@ GRANT USAGE ON SCHEMA collision TO shell_app;
 GRANT SELECT (id, person_id, google_email, role, active) ON collision.staff_user TO shell_app;
 
 GRANT USAGE ON SCHEMA elektrica TO shell_app;
-GRANT SELECT (id, person_id, google_email, role, active) ON elektrica.staff_user TO shell_app;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'elektrica' AND table_name = 'staff_user'
+  ) THEN
+    EXECUTE 'GRANT SELECT (id, person_id, google_email, role, active) ON elektrica.staff_user TO shell_app';
+  END IF;
+END $$;
 
 -- Explicitly NOT granted (documented for clarity, these are no-ops since
 -- shell_app has no ambient privilege, but stating the boundary plainly):

@@ -180,3 +180,52 @@ business-specific. Still blocked on the same two things as before:
 the scoped Neon connection string (requested, not yet received) and
 Collision's/Elektrica's confirmed Google Workspace domains.
 
+## 2026-09-05 — shell_app role + platform.person RLS applied and verified live
+
+hermes applied `migrations/001_shell_app_role.sql` (the shell_app
+role + grants I'd committed as source but not applied myself) plus a
+`platform.person` RLS policy, on both staging and production. Verified
+directly by hermes, not just "the migration ran": staging shows 2
+person rows visible correctly and a denied read on `vls.case`
+(confirms the no-case-access boundary holds for real, not just in
+comments); production shows the same pattern.
+
+Real gap surfaced during that verification: `vls.staff_user.person_id`
+is NULL for all 5 production staff rows — no `platform.person` row
+was ever created for VLS staff (only for clients). This means the
+`person_id: null` TODO already sitting in `api/src/auth.ts`'s
+`ShellSession` construction was the right call, not a shortcut to
+revisit — resolving `person_id` from the DB right now would find
+nothing to resolve to for any real staff member anyway. hermes is
+treating "should staff provisioning also create a `platform.person`
+row per convention #1" as a separate open question for the domain
+bots to answer, not something for shell to fix. No code change needed
+here; the TODO stays exactly as-is pending that decision elsewhere.
+
+Actual `SHELL_DB_URL` connection string coming in a follow-up message
+(kept out of the same message as the "applied and verified" report,
+correctly, so a secret isn't sitting in plain chat text next to
+unrelated content). Once received: drop into `api/.env` (gitignored,
+never commit), point `DATABASE_URL` at it, and re-run the same curl
+exercise from the 2026-09-04 session — `/health`, `/auth/google`,
+`/me` — against the real staging DB this time, not fake env vars,
+before calling entitlement lookup verified end-to-end.
+
+Also found `migrations/001_shell_app_role.sql` updated (elektrica
+grant now conditional on the table existing, since it's still
+staging-only on production) and a new
+`migrations/002_shell_app_person_rls.sql` in the working tree —
+the actual RLS policy referenced above: `shell_app` may SELECT a
+`platform.person` row only if that person has an active row in ANY
+of the three business staff tables, joined on `staff_user.person_id`.
+Reviewed both: no secrets embedded, scoped correctly (staff
+visibility only — explicitly does not grant visibility into
+`vls.client`/`elektrica.renter`/`collision.customer`), and written
+defensively for elektrica.staff_user's staging-only status on
+production. Committed as source. Worth noting: since this RLS policy
+joins on `staff_user.person_id`, and that column is NULL for all 5
+production VLS staff rows (see above), the policy currently returns
+zero visible `platform.person` rows for VLS staff specifically —
+consistent with, not a new instance of, the same gap. No shell-side
+action needed; same wait-for-domain-bots-decision applies.
+

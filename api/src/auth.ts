@@ -34,7 +34,7 @@ const JWT_SECRET: string = JWT_SECRET_RAW;
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 export interface ShellSession {
-  person_id: number | null; // null until platform.person linkage is wired — see Open item below.
+  person_id: number | null; // Deliberately unresolved — see comment at assignment below.
   google_email: string;
   grants: Grant[];
 }
@@ -112,7 +112,18 @@ export async function handleGoogleLogin(req: Request, res: Response) {
   }
 
   const session: ShellSession = {
-    person_id: null, // TODO: resolve via platform.person once shell_app's grant on that table is confirmed live — see docs/BUILD_LOG.md.
+    // NOT a TODO to "get around to" — verified blocked, not just
+    // unimplemented. hermes confirmed (2026-09-05) that
+    // vls.staff_user.person_id is NULL for all 5 production staff
+    // rows: no platform.person row was ever created for VLS staff
+    // (only for clients). Resolving this from the DB today would find
+    // nothing to resolve to for any real staff member, so it would be
+    // guessing, not implementing. Stays null until the domain bots
+    // decide whether staff provisioning should also create a
+    // platform.person row (convention #1) — that decision is
+    // explicitly not shell's to make. See docs/BUILD_LOG.md
+    // 2026-09-05 entry.
+    person_id: null,
     google_email: email,
     grants,
   };
