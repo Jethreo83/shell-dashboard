@@ -306,3 +306,56 @@ login + entitlement + fail-closed re-check is now verified working
 end-to-end against real, live data — not just unit-level or
 fake-env-var testing.
 
+## 2026-09-05 — all three domains confirmed by Jed; Elektrica door fully wired
+
+Jed confirmed (relayed by hermes) the two remaining domains: Complete
+Collision `completecollisions.com`, Elektrica `elektricarentals.com`
+(VLS `vlslawfirm.com` already confirmed). Also confirmed Elektrica's
+`owner`/`staff` role enum is now final, not placeholder — no further
+change coming. Separately, Jed decided staff provisioning should
+also create a `platform.person` row (matching client/customer/renter
+provisioning), which will eventually resolve the `person_id`-NULL
+gap flagged 2026-09-05 — that work belongs to the domain bots, not
+shell.
+
+Updated `api/src/businesses.ts`: filled in both previously-`null`
+domains, updated the module comment to stop describing them as
+unconfirmed/placeholder. No other code changes needed — same as the
+Elektrica-table-landing update, this generalized for free because
+the mechanism never special-cased any one business.
+
+Re-verified, not just trusted the edit:
+- `tsc -p . --noEmit` and `tsc -p .` clean.
+- Rebuilt and re-ran the live API against staging (clean env — see
+  memory note re: stray `DATABASE_URL`/`DATABASE_URL_UNPOOLED`,
+  unset before every DB-touching command this session).
+- Direct check of `businessForDomain()`/`confirmedBusinesses()`
+  against the compiled module: all three domains resolve to the
+  correct business, an unrelated domain is correctly rejected,
+  `confirmedBusinesses()` now returns 3 (was 1).
+- Multi-business `grantsForEmail()` for a definitely-unknown email
+  returns `[]` cleanly across all three staff tables, no errors.
+- Re-ran the same real-active-staff-email `/me` check from the prior
+  session (masked email, JWT with empty grants) — still returns the
+  correct live `vls` grant, confirming the domain-list edit didn't
+  regress VLS's existing behavior.
+- Explicitly confirmed the `person_id: null` code path is untouched
+  and unaffected by Jed's platform.person decision: entitlement
+  lookup is keyed on `google_email` throughout
+  (`entitlements.ts`/`auth.ts`), never `person_id` — verified this by
+  re-running the `/me` check above and observing correct grants
+  despite `person_id` still being `null` in the signed JWT payload.
+  No shell code change needed when the domain bots' provisioning
+  work lands.
+- All scratch test scripts deleted after use.
+
+Updated `docs/ADR-001-shell-architecture.md` Open Questions 2, 3, and
+6 to reflect resolution. Elektrica's launcher door is now fully
+wired — no special-casing left anywhere in the code between VLS,
+Collision, and Elektrica.
+
+Nothing else changed in `web/` this session — the launcher already
+renders whatever `/me` returns generically per business, so no UI
+code needed touching for Elektrica's door to start appearing once a
+real active Elektrica staff member logs in.
+

@@ -197,9 +197,25 @@ inherits a shell that was designed with the constraint in mind.
    right call, or should this be flagged to the Elektrica bot as a
    blocking dependency now?
 
+   UPDATE 2026-09-05: RESOLVED — confirmed correct, and now fully
+   moot: Elektrica's `staff_user` table exists, its role enum
+   (`owner`/`staff`) is confirmed final by Jed (no further change
+   coming), and its domain is confirmed (`elektricarentals.com`).
+   Elektrica's door is fully wired — same as VLS and Collision, no
+   special-casing left in the code.
+
 3. **Actual Google Workspace domains for Collision and Elektrica** —
    needed to populate Decision 4's mapping. Only `vlslawfirm.com` is
    confirmed from what I've read.
+
+   UPDATE 2026-09-05: RESOLVED — Jed confirmed all three directly
+   (relayed by hermes): VLS `vlslawfirm.com`, Complete Collision
+   `completecollisions.com`, Elektrica `elektricarentals.com`. All
+   three filled into `api/src/businesses.ts`; no more `null` domains.
+   Verified live against staging: `businessForDomain()` resolves all
+   three correctly and rejects an unrelated domain; `/me` still
+   returns the correct `vls` grant for a real active staff email
+   afterward (no regression from the edit).
 
 4. **Enforcement layer** — is "door doesn't appear" purely a launcher
    UI check (weaker — depends entirely on each dashboard also
@@ -229,14 +245,20 @@ inherits a shell that was designed with the constraint in mind.
    (`migrations/001_shell_app_role.sql`) plus a `platform.person` RLS
    policy applied and verified live by hermes on staging and
    production (denied read on `vls.case` confirmed, not just
-   assumed). Actual `SHELL_DB_URL` connection string incoming in a
-   follow-up message. Side finding from that verification:
-   `vls.staff_user.person_id` is NULL for all 5 production staff rows
-   — no `platform.person` row exists for VLS staff today, only for
-   clients. This is now a separate open item for the domain bots
-   (should staff provisioning also create a `platform.person` row per
-   convention #1?), not something the shell fixes — `person_id` stays
-   `null` in the shell's session/JWT until that's resolved elsewhere.
+   assumed). Actual `SHELL_DB_URL` connection string received and
+   wired into `api/.env` (gitignored); full login+entitlement flow
+   re-verified end-to-end against live staging data. Side finding
+   from that verification: `vls.staff_user.person_id` is NULL for
+   all 5 production staff rows — no `platform.person` row exists for
+   VLS staff today, only for clients. Jed decided (2026-09-05,
+   relayed by hermes) that staff provisioning should also create a
+   `platform.person` row, matching client/customer/renter
+   provisioning — that work belongs to the domain bots, not the
+   shell. Confirmed directly that the shell's entitlement lookup is
+   unaffected either way since it's keyed on `google_email`, never
+   `person_id` — `person_id` stays `null` in the shell's
+   session/JWT until the domain bots' work lands, and no shell code
+   change is needed when it does.
 
 ## Non-goals (explicit, per SOUL.md scope)
 
