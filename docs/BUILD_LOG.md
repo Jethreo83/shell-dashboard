@@ -41,3 +41,106 @@
   (`SELECT`-only on `platform.person` + each business's staff table)
   and start building the login + launcher against a live DB, verified
   by direct query per the same standard every other bot here holds to.
+
+## 2026-09-04 (session 2) — cleared to build, first working skeleton
+
+hermes answered all 6 open questions (2026-09-04):
+1. One JWT, true SSO — all dashboard APIs verify it directly via a
+   shared secret/issuer convention. Not a redirect/exchange-token
+   handoff.
+2. Omit Elektrica's door until it has its own staff_user table. My
+   proposal confirmed correct — not building it on their behalf, not
+   flagging as urgent; hermes will note it to elektrica-dashboard
+   separately.
+3. Collision's/Elektrica's actual Google Workspace domains: still not
+   confirmed by anyone. hermes will get them from Jed and relay
+   before Decision 4 needs to be real. Left as `null` in
+   `api/src/businesses.ts` on purpose — not guessed at.
+4. Real routing-level enforcement, not UI-only.
+5. No blocklist/revocation for now — 8h TTL, same tradeoff VLS already
+   lives with. Logout = client discards token; a copied token stays
+   valid until expiry. Revisit only if/when financials needs harder
+   guarantees.
+6. Scoped Neon connection string: hold off requesting until actually
+   ready to build against live data — asked for it in this session's
+   report below.
+
+Cleared to move from ADR to actual build on this basis.
+
+Built and verified (all claims below backed by real command output,
+not just "the code looks right"):
+
+- `docs/JWT_CONTRACT.md` — the shared secret/issuer SSO contract other
+  dashboard bots' backends need to implement equivalently (mirrors
+  VLS's own `requireAuth` shape). Flags one open item for hermes: does
+  VLS's existing standalone `/auth/google` + own JWT get retired once
+  the shell exists, or run in parallel for a transition period — not
+  my call to make alone.
+- `api/` — Express + TypeScript skeleton:
+  - `businesses.ts` — static domain→business→staffTable config.
+    Collision's and Elektrica's domains are `null` on purpose (Open
+    Question 3, unresolved) — code comment states explicitly not to
+    guess them.
+  - `entitlements.ts` — read-only grant lookup against each
+    business's own `staff_user` table. Handles Elektrica's table not
+    existing yet (`undefined_table`, Postgres code 42P01) as "no
+    grant," not a hard failure, so the launcher still works for
+    VLS/Collision while Elektrica's table is pending.
+  - `auth.ts` — Google ID token verification, multi-business grant
+    lookup, SSO JWT issuance (`iss: "shell-dashboard"`, `grants[]`,
+    8h TTL), and `requireShellAuth` verification middleware.
+  - `server.ts` — `/health`, `POST /auth/google`, `GET /me` (re-reads
+    grants fresh from the DB every call — fail-closed re-check, not
+    trust-the-JWT, matching VLS's own `requireAuth` pattern).
+  - `npx tsc -p . --noEmit` → clean, no errors.
+  - Ran the built server locally against fake env vars (no real DB
+    yet) and exercised it with curl:
+    - `GET /health` → 200 `{"ok":true,...}`.
+    - `POST /auth/google` with no body → 400 `missing_id_token`.
+    - `GET /me` with no auth header → 401 `missing_token`.
+    - `GET /me` with a malformed token → 401 `invalid_or_expired_token`.
+    - `GET /me` with a validly-signed token whose `iss` is NOT
+      `shell-dashboard` → 401 `invalid_issuer` (confirms the
+      issuer check works, not just signature verification).
+    - `GET /me` with a valid, correctly-issued token against an
+      **unreachable DB** (`ECONNREFUSED`) → **found a real bug**: the
+      first version crashed the whole Node process instead of failing
+      closed. Fixed by wrapping the DB-touching paths in `/me` and
+      `POST /auth/google` in try/catch → 503
+      `entitlement_check_failed`, confirmed by curl the server now
+      returns the 503 and stays alive (`/health` still responds
+      afterward). This is exactly the "verify against a live
+      failure mode, not just that the code ran" standard — caught a
+      genuine crash bug before it could reach production.
+- `web/` — Vite + React + TypeScript skeleton:
+  - `auth.tsx` — generalized from VLS's own `web/src/auth.tsx`:
+    same Google Identity Services + localStorage-JWT pattern, single
+    `role` replaced with a `grants[]` array.
+  - `Launcher.tsx` — renders one door per entry in `/me`'s `doors`
+    array only; deploy URLs per dashboard left unset on purpose
+    (none of the three dashboards has a live URL yet).
+  - `npx tsc -b --noEmit` → clean (had to add `vite-env.d.ts` for
+    `import.meta.env` typing — caught by the first typecheck run,
+    fixed, re-verified clean).
+  - `npx vite build` → succeeded, produced `dist/index.html` +
+    bundled JS (145 KB, 47 KB gzipped).
+- Confirmed no secrets committed: `.env` files are gitignored,
+  `.env.example` templates committed instead; build artifacts
+  (`dist/`, `node_modules/`, `*.tsbuildinfo`) excluded via
+  `.gitignore`. Checked `git status`/`git check-ignore` directly
+  before committing, not assumed.
+
+Not done yet / explicitly still open:
+- No real DB connection — still waiting on hermes for the scoped
+  `shell_app` connection string (SELECT-only on `platform.person` +
+  each business's `staff_user`). Requested in this session's report.
+- `platform.person`-based `person_id` resolution in `auth.ts` is a
+  stubbed `null` (`TODO` comment in code) — needs that connection
+  string to wire for real, not guessed at.
+- No deploy anywhere, nothing exposed externally. Committing/pushing
+  source to the already-public repo (below) is not the same as
+  deploying a running service — that still has not happened, and
+  won't without explicit approval per SOUL.md.
+- Dashboard deploy URLs in `Launcher.tsx`'s `DASHBOARD_URLS` map are
+  all `undefined` — correct today since none of VLS/Elektrica/Collision
+  has a live frontend yet either.

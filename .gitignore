@@ -14,3 +14,4 @@ data/snapshots/
 # Dependencies / build output
 node_modules/
 dist/
+*.tsbuildinfo
