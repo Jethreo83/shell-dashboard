@@ -1,0 +1,16 @@
+# Secrets — never commit
+.env
+.env.*
+*.pem
+*credentials*.json
+*token*.json
+client_secret*.json
+*.dump
+*.sql.gz
+
+# Client/business data — never commit
+data/snapshots/
+
+# Dependencies / build output
+node_modules/
+dist/
