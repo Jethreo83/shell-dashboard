@@ -1,0 +1,122 @@
+:root {
+  --shell-bg: #0f172a;
+  --shell-surface: #1e293b;
+  --shell-border: #334155;
+  --shell-text: #f1f5f9;
+  --shell-text-dim: #94a3b8;
+  --shell-accent: #38bdf8;
+  --shell-danger: #f87171;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--shell-bg);
+  color: var(--shell-text);
+}
+
+.shell-login {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+
+.shell-login h1 {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.shell-login p.error {
+  color: var(--shell-danger);
+  font-size: 14px;
+}
+
+.shell-app {
+  min-height: 100vh;
+}
+
+.shell-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 32px;
+  border-bottom: 1px solid var(--shell-border);
+}
+
+.shell-header .email {
+  color: var(--shell-text-dim);
+  font-size: 13.5px;
+  margin-right: 16px;
+}
+
+.shell-signout {
+  background: transparent;
+  border: 1px solid var(--shell-border);
+  color: var(--shell-text-dim);
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.shell-signout:hover { border-color: var(--shell-accent); color: var(--shell-text); }
+
+.shell-doors {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
+  padding: 40px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.shell-door {
+  background: var(--shell-surface);
+  border: 1px solid var(--shell-border);
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.shell-door h3 {
+  font-size: 18px;
+  margin: 0;
+}
+
+.shell-door .role {
+  color: var(--shell-text-dim);
+  font-size: 13px;
+  text-transform: capitalize;
+}
+
+.shell-door a.open-btn {
+  display: inline-block;
+  margin-top: auto;
+  background: var(--shell-accent);
+  color: #0f172a;
+  font-weight: 600;
+  text-decoration: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.shell-door .unavailable {
+  color: var(--shell-text-dim);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.shell-empty, .shell-loading {
+  text-align: center;
+  color: var(--shell-text-dim);
+  padding: 60px 20px;
+}

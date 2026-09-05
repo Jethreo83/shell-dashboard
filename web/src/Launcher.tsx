@@ -16,14 +16,14 @@ interface Door {
   role: string;
 }
 
-// Where each dashboard actually lives — filled in as they deploy.
-// Deliberately NOT derived from `doors` (which only tells us
-// entitlement, not URL) and deliberately incomplete until hermes
-// confirms deploy URLs for each dashboard.
+// Where each dashboard actually lives. Local dev URLs, pinned ports
+// per hermes's port-collision fix (2026-09-05): vls=5180, elektrica=5181,
+// collision=5182, shell(this app)=5173. Update to real production
+// deploy URLs once any dashboard is actually deployed somewhere public.
 const DASHBOARD_URLS: Record<string, string | undefined> = {
-  vls: undefined,
-  collision: undefined,
-  elektrica: undefined,
+  vls: 'http://localhost:5180',
+  collision: 'http://localhost:5182',
+  elektrica: 'http://localhost:5181',
 };
 
 export function Launcher() {
@@ -54,26 +54,31 @@ export function Launcher() {
 
   return (
     <div>
-      <header>
-        <span>{session.google_email}</span>
-        <button onClick={logout}>Log out</button>
+      <header className="shell-header">
+        <div>
+          <strong>Jocasta</strong>
+          <span className="email">{session.google_email}</span>
+        </div>
+        <button className="shell-signout" onClick={logout}>Sign out</button>
       </header>
-      {error && <p role="alert">{error}</p>}
-      {doors === null && !error && <p>Loading your dashboards…</p>}
+
+      {error && <p role="alert" style={{ color: 'var(--shell-danger)', textAlign: 'center', marginTop: 24 }}>{error}</p>}
+      {doors === null && !error && <p className="shell-loading">Loading your dashboards…</p>}
       {doors !== null && doors.length === 0 && (
-        <p>No dashboards are provisioned for this account yet.</p>
+        <p className="shell-empty">No dashboards are provisioned for this account yet. Contact an admin.</p>
       )}
-      <div>
+
+      <div className="shell-doors">
         {doors?.map((d) => {
           const url = DASHBOARD_URLS[d.business];
           return (
-            <div key={d.business}>
+            <div key={d.business} className="shell-door">
               <h3>{d.label}</h3>
-              <p>Role: {d.role}</p>
+              <p className="role">Role: {d.role}</p>
               {url ? (
-                <a href={url}>Open</a>
+                <a className="open-btn" href={url}>Open →</a>
               ) : (
-                <span>(deploy URL not configured yet)</span>
+                <span className="unavailable">Not deployed yet</span>
               )}
             </div>
           );
