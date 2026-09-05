@@ -28,6 +28,20 @@ GRANT SELECT (id, person_id, google_email, role, active) ON collision.staff_user
 
 GRANT USAGE ON SCHEMA elektrica TO shell_app;
 
+-- 2026-09-05 update (hermes): elektrica.staff_user now exists on both
+-- staging and production (migration 011 promoted same day). The
+-- conditional guard below is KEPT (not dropped) so this migration still
+-- applies cleanly on a fresh/rebuilt environment where elektrica hasn't
+-- run yet - but it silently no-ops if the table already existed at the
+-- time THIS migration first ran and was never re-applied after. That
+-- exact gap caused a real bug: shell_app had no grant on
+-- elektrica.staff_user in either environment, surfacing as "permission
+-- denied for table staff_user" on every login (any business), because
+-- entitlements.ts queries all three staff tables unconditionally and an
+-- uncaught permission error there fails the whole login, not just
+-- Elektrica's door. Fixed directly via GRANT on both environments
+-- 2026-09-05; this file's guard updated so it is now idempotent/safe to
+-- re-run even after the table exists (GRANT is itself idempotent).
 DO $$
 BEGIN
   IF EXISTS (

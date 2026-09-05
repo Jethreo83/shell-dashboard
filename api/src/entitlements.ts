@@ -25,13 +25,15 @@ async function activeStaffRow(staffTable: string, googleEmail: string): Promise<
     );
     return rows[0] ?? null;
   } catch (err: any) {
-    // Defense-in-depth, not the expected path anymore: as of
-    // 2026-09-05 all three businesses' staff_user tables exist
-    // (elektrica.staff_user just landed — hermes, 2026-09-05). Kept so
-    // a business whose table gets dropped/renamed mid-migration still
-    // degrades to "no entitlement" instead of a hard 500 for
-    // everyone. Any other DB error still surfaces normally via query().
-    if (err?.code === '42P01' /* undefined_table */) {
+    // Defense-in-depth: a business whose staff table gets
+    // dropped/renamed mid-migration, OR whose shell_app grant hasn't
+    // landed yet (real bug hit 2026-09-05: elektrica.staff_user existed
+    // but shell_app's GRANT was never re-applied after the table landed,
+    // which surfaced as an uncaught "permission denied" that failed
+    // login for ALL businesses, not just Elektrica's), degrades to "no
+    // entitlement for this business" instead of a hard 500 for everyone.
+    // Any other DB error still surfaces normally via query().
+    if (err?.code === '42P01' /* undefined_table */ || err?.code === '42501' /* insufficient_privilege */) {
       return null;
     }
     throw err;
