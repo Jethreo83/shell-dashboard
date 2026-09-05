@@ -76,7 +76,7 @@ export function Launcher() {
               <h3>{d.label}</h3>
               <p className="role">Role: {d.role}</p>
               {url ? (
-                <a className="open-btn" href={url}>Open →</a>
+                <a className="open-btn" href={`${url}?token=${encodeURIComponent(token!)}`}>Open →</a>
               ) : (
                 <span className="unavailable">Not deployed yet</span>
               )}
